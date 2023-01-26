@@ -88,7 +88,3 @@ To run the command above from inside docker container
 docker run --rm -v /opt/my-notes:/opt/my-notes -it -e "TERM=xterm-256color" --rm search_markdown -k "pcageneral" -rn
 ```
 
-To validate the markodwn only, use the `-va` argument which will parse the mindmap and display any syntax errors in the markdown. The following command will validate the freeplane mindmaps in the folder `~/my-notes` (keyword is provided for completeness and is ignored)
-```
-python3 main.py -k test2 -f ~/my-notes/ -va
-```
