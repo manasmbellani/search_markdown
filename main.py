@@ -83,13 +83,12 @@ def debug(msg):
     if verbose_flag:
         print("[*] " + msg)
 
-def open_markdown_file(markdown_file, validate_only=False):
+def open_markdown_file(markdown_file):
     """Open the Markdown file and parse the Markdown file recursively into a map which can be easily
     searched
 
     Args:
         markdown_file (str): Markdown file to parse
-        validate_only (bool, optional): Whether to validate Freeplane Map. Defaults, False.
 
     Returns:
         list: Structure of the Markdown file
@@ -270,7 +269,7 @@ def put_search_tasks(filepath):
     search_tasks_queue.put(filepath)
 
 def open_map_and_search(keywords, delimiter, case_sensitive, replace_newlines, 
-    validate_only=False, block_period=INIT_BLOCK_PERIOD):
+    block_period=INIT_BLOCK_PERIOD):
     """Open a single markdown file from the queue and search
 
     Args:
@@ -278,8 +277,7 @@ def open_map_and_search(keywords, delimiter, case_sensitive, replace_newlines,
         delimiter (str): Delimiter to use for multiple keywords
         case_sensitive (bool): Case sensitive
         replace_newlines (str): Newlines for replacement
-        validate_only (bool): Whether to only validate the freeplane map instead of continuing to 
-            parse to show any errors. Defaults, False. 
+        block_period (int): Period to block the thread to wait for data
     """
     global user_interrupt_flag, search_tasks_queue
 
@@ -295,30 +293,28 @@ def open_map_and_search(keywords, delimiter, case_sensitive, replace_newlines,
 
         if filepath:
 
-            # Open the freeplane map
+            # Open the markdown file
             did_user_interrupt = user_interrupt_flag.is_set()
             if not did_user_interrupt:
-                map_structure = open_markdown_file(filepath, validate_only)
+                map_structure = open_markdown_file(filepath)
                 #print(map_structure)
             else:
                 continue_thread = False
 
-            # if validating freeplane mindmaps only, then we don't search for keywords...
-            if not validate_only:
-                # Search the freeplane map for the keywords
-                did_user_interrupt = user_interrupt_flag.is_set()
-                if not did_user_interrupt:
-                    lines_found = search_markdown_file(filepath, map_structure, keywords, delimiter, 
-                        replace_newlines, case_sensitive)
-                else:
-                    continue_thread = False
+            # Search the markdown map for the keywords
+            did_user_interrupt = user_interrupt_flag.is_set()
+            if not did_user_interrupt:
+                lines_found = search_markdown_file(filepath, map_structure, keywords, delimiter, 
+                    replace_newlines, case_sensitive)
+            else:
+                continue_thread = False
 
-                # Put the lines found from print queue for printing to terminal
-                did_user_interrupt = user_interrupt_flag.is_set()
-                if not did_user_interrupt:
-                    put_on_print_queue(filepath, lines_found)
-                else:
-                    continue_thread = False
+            # Put the lines found from print queue for printing to terminal
+            did_user_interrupt = user_interrupt_flag.is_set()
+            if not did_user_interrupt:
+                put_on_print_queue(filepath, lines_found)
+            else:
+                continue_thread = False
         else:
             continue_thread = False
 
@@ -349,7 +345,7 @@ def list_files_to_check(file_folder, extensions):
     return files_to_search
 
 def launch_all_threads(file_folder, keywords, delimiter, case_sensitive, extensions, num_threads,
-    replace_newlines, validate_only=False):
+    replace_newlines):
     """
     Launch all the threads that will perform the search across the various Freeplane Map files
 
@@ -361,7 +357,6 @@ def launch_all_threads(file_folder, keywords, delimiter, case_sensitive, extensi
         extensions (str): List of freeplane file extensions
         num_threads (int): Number of threads for search tasks
         replace_new_lines (bool): Replace new lines
-        validate_only (bool, optional): Validate mindmap only. Defaults, False.
     """
 
     files_to_search = list_files_to_check(file_folder, extensions)
@@ -371,7 +366,7 @@ def launch_all_threads(file_folder, keywords, delimiter, case_sensitive, extensi
     # Launch the threads to open map and search
     for _ in range(0, num_threads):
         t = threading.Thread(target=open_map_and_search, args=(keywords, delimiter, case_sensitive,
-            replace_newlines, validate_only))
+            replace_newlines))
         t.start()   
         thread_objects.append(t)
 
@@ -408,8 +403,6 @@ def main():
         help="Verbose to print messages")
     parser.add_argument("-rn", "--replace-newlines", action="store_true", 
         help="Replace new lines with '\\n' to allow printing of matches per line")
-    parser.add_argument("-va", "--validate", action="store_true", 
-        help="Validate the mindmaps only")
 
     args = parser.parse_args()
 
@@ -422,7 +415,7 @@ def main():
     init_search_tasks_queue()
 
     launch_all_threads(args.file_folder, args.keywords, args.delimiter, args.case_sensitive, 
-        args.extensions, int(args.num_threads), args.replace_newlines, args.validate)
+        args.extensions, int(args.num_threads), args.replace_newlines)
 
 if __name__ == "__main__":
     sys.exit(main())
